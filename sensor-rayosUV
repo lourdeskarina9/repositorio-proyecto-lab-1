@@ -1,2 +1,73 @@
 # repositorio-proyecto-lab-1
-Repositorio para los códigos que vayamos haciendo. Codigo del sensor integrado: DHT, LSD, CLOCK (reloj) y ML8511 (sensor de rayos UV)
+Repositorio para los códigos que vayamos haciendo. Codigo del sensor integrado: DHT11, LSD, CLOCK (reloj) y ML8511 (sensor de rayos UV)
+//BIBLOTECAS NECESARIAS (para DHT11 y LSD)
+#include <Wire.h> 		// ya la trae la IDE, no hace falta instalar
+#include <LiquidCrystal_I2C.h> //descargar LiquidCrystal I2C de Frank Brabander y todas sus dependencias
+#include <DHT.h> 		//descargar DHT Sensor by Adafruit y todas sus dependencias
+
+//PINES
+#define DHTPIN 7
+#define DHTTYPE DHT11   
+
+DHT dht(DHTPIN, DHTTYPE);	// definición del sensor
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // definición del LCD (dirección del sensor, cantidad de columnas, cantidad de filas)
+
+//PROGRAMA
+void setup() {
+  lcd.init();       // iniciar pantalla
+  lcd.backlight();  // incender luz de fondo (necesario porque sino no se ve nada)
+  dht.begin();      // iniciar sensor
+  lcd.setCursor(0, 0); // deja el cursor del LCD al comienzo para poder escribir
+  lcd.print("Iniciando"); //mensajito ;)
+  lcd.setCursor(1, 3); // paso a la parte de abajo 
+  lcd.print("centralita"); //mensajito ;)
+  delay(2000);
+  lcd.clear(); //limpia el LCD (el mensajito)
+}
+
+void loop() {
+
+//A las variables las pongo acá para que se limpien y actualicen en cada loop (por las dudas)
+
+  float h = dht.readHumidity(); //variable humedad
+  float t = dht.readTemperature(); //variable temperatura
+
+
+//CÓDIGOS DE ERROR DHT11 (para darnos cuenta si nos explota algo ;) (ok, no)
+
+ if (isnan(h) && isnan(t)) { //en caso de falla total de sensor
+    lcd.setCursor(0, 0);
+    lcd.print("Error sensor");
+    return;
+  } 
+  else if (isnan(h)) { //en caso de falla de sensor hum
+    lcd.setCursor(0, 0);
+    lcd.print("Error humedad ");
+    lcd.setCursor(0, 1);
+    lcd.print("              ");
+    return;
+  } 
+  else if (isnan(t)) { //en caso de falla de sensor temp
+    lcd.setCursor(0, 0);
+    lcd.print("Error temp    ");
+    lcd.setCursor(0, 1);
+    lcd.print("              ");
+    return;
+  }
+
+//MOSTRAR LOS DATOS OBTENIDOS
+
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(t);
+  lcd.print((char)223); // Símbolo de grados "°" (el LCD no lo muestra bien sino)
+  lcd.print("C");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Humedad: ");
+  lcd.print(h);
+  lcd.print("%");
+
+  delay(2000); // Actualiza cada 2 segundos
+}
