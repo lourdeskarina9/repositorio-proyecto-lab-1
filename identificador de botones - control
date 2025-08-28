@@ -1,0 +1,29 @@
+#include <Arduino.h>
+#include <IRremote.hpp>
+
+const int IR_RECV_PIN = 11;  // Usá el pin donde conectaste el receptor
+
+void setup() {
+  Serial.begin(115200);
+  IrReceiver.begin(IR_RECV_PIN, ENABLE_LED_FEEDBACK);
+  Serial.println("Apunta el control y presiona un boton...");
+}
+
+void loop() {
+  if (IrReceiver.decode()) {
+    // Mostrar el protocolo y comando si se reconoce
+    if (IrReceiver.decodedIRData.protocol == UNKNOWN) {
+      Serial.println(F("Protocolo desconocido o ruido"));
+      IrReceiver.printIRResultRawFormatted(&Serial, true); // Muestra señal cruda
+    } else {
+      Serial.print(F("Protocolo: "));
+      Serial.print(IrReceiver.decodedIRData.protocol);
+      Serial.print(F("  Comando: 0x"));
+      Serial.println(IrReceiver.decodedIRData.command, HEX);
+    }
+
+    Serial.println("--------------------------------");
+    IrReceiver.resume(); // Listo para el siguiente botón
+    delay(300);          // Pequeña pausa para leer bien los datos
+  }
+}
