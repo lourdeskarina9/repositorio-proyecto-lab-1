@@ -1,0 +1,20 @@
+//Esto se pone en el SETUP, por el monitor serial va a pedir que se ingrese manualmente la fecha y hora. 
+//Solo es necesario hacer esto UNA sola vez.
+//Cuando ya esté configurado el clock, se puede borrar este código, no va a pasar nada.
+
+while (!Serial); // Espera a que el monitor serial esté listo
+  Serial.println("Esperando hora desde PC (formato: YYYY-MM-DD HH:MM:SS)");
+
+  while (Serial.available() == 0); // Espera entrada
+  String fechaHora = Serial.readStringUntil('\n');
+
+  // Parsear la fecha y hora
+  int year = fechaHora.substring(0, 4).toInt();
+  int month = fechaHora.substring(5, 7).toInt();
+  int day = fechaHora.substring(8, 10).toInt();
+  int hour = fechaHora.substring(11, 13).toInt();
+  int minute = fechaHora.substring(14, 16).toInt();
+  int second = fechaHora.substring(17, 19).toInt();
+
+  // Día de la semana (puedes calcularlo o dejarlo fijo)
+  int dayOfWeek = 1;
