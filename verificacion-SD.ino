@@ -1,0 +1,42 @@
+#include <SD.h>
+
+File myFile;
+const int chipSelect = 7; // Ajustá si usás otro pin CS
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Iniciando SD ...");
+
+  // Paso 1: Verificar SD
+  if (!SD.begin(chipSelect)) {
+    Serial.println("❌ No se pudo inicializar la SD");
+    return;
+  }
+  Serial.println("✅ SD inicializada correctamente");
+
+  // Paso 2: Verificar si existe el archivo
+  if (!SD.exists("archivo.txt")) {
+    Serial.println("❌ El archivo 'archivo.txt' no existe en la SD");
+    return;
+  }
+  Serial.println("✅ El archivo 'archivo.txt' existe");
+
+  // Paso 3: Abrir el archivo
+  myFile = SD.open("archivo.txt");
+  if (!myFile) {
+    Serial.println("❌ Error al abrir el archivo");
+    return;
+  }
+  Serial.println("✅ Archivo abierto correctamente, leyendo contenido:");
+
+  // Paso 4: Leer contenido
+  while (myFile.available()) {
+    Serial.write(myFile.read());
+  }
+  myFile.close();
+  Serial.println("\n✅ Lectura finalizada");
+}
+
+void loop() {
+  // Nada
+}
