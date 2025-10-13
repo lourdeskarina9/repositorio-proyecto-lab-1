@@ -1,4 +1,5 @@
 🌤️ Estación de Monitoreo Ambiental — Arduino
+
 📋 Descripción general
 
 La Estación de Monitoreo Ambiental es un sistema diseñado para registrar y analizar distintas variables del entorno mediante sensores conectados a una placa Arduino UNO.
