@@ -1,6 +1,13 @@
+#include <Wire.h>               
+#include <virtuabotixRTC.h>
+
+virtuabotixRTC myRTC(5, 4, 3);         //CLK=5, DAT=4, RST=3
+
+void setup() {
 //Esto se pone en el SETUP, por el monitor serial va a pedir que se ingrese manualmente la fecha y hora. 
 //Solo es necesario hacer esto UNA sola vez.
 //Cuando ya esté configurado el clock, se puede borrar este código, no va a pasar nada.
+Serial.begin(9600);
 
 while (!Serial); // Espera a que el monitor serial esté listo
   Serial.println("Esperando hora desde PC (formato: YYYY-MM-DD HH:MM:SS)");
@@ -8,7 +15,7 @@ while (!Serial); // Espera a que el monitor serial esté listo
   while (Serial.available() == 0); // Espera entrada
   String fechaHora = Serial.readStringUntil('\n');
 
-  // Parsear la fecha y hora
+  //Parseo de fecha y hora
   int year = fechaHora.substring(0, 4).toInt();
   int month = fechaHora.substring(5, 7).toInt();
   int day = fechaHora.substring(8, 10).toInt();
@@ -16,5 +23,22 @@ while (!Serial); // Espera a que el monitor serial esté listo
   int minute = fechaHora.substring(14, 16).toInt();
   int second = fechaHora.substring(17, 19).toInt();
 
-  // Día de la semana (puedes calcularlo o dejarlo fijo)
+  //Para poner el número del día de la semana
+  //1 - Lunes
+  //2 - Martes
+  //3 - Miércoles
+  //4 - Jueves
+  //5 - Viernes
+  //6 - Sábado
+  //7 - Domingo
   int dayOfWeek = 1;
+
+  myRTC.setDS1302Time(second, minute, hour, dayOfWeek, day, month, year);
+
+  Serial.println("Clock set");
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+}
