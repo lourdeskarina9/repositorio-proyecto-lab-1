@@ -4,7 +4,6 @@
 #include <DHT.h> 		
 #include <virtuabotixRTC.h>
 
-
 //PINES
 #define DHTPIN 7
 #define DHTTYPE DHT11   
@@ -137,3 +136,4 @@ void beep(int frecuencia) {
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
