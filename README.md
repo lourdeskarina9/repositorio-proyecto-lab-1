@@ -25,11 +25,11 @@ Su objetivo es obtener datos de temperatura, humedad y radiación ultravioleta (
 
 
 **‼️Antes de compilar y cargar el código "FINAL", asegurate de instalar las siguientes librerías desde el Administrador de Librerías del Arduino IDE:**
-**Wire.h (incluida en la IDE de desarollo de Arduino)**: permite modificar los pines de comunicación I2C con el LCD de 16x2.
-**DHT.h (by Adafruit)**: necesaria para trabajar con el sensor DHT11 (o DHT22 en su defecto). 
-**LiquidCrystal_I2C.h (by Frank Brabander)**: permitre el manejo de la pantalla LCD I2C 16x2.
-**virtuabotixRTC.h: (by Joseph Datillo)**: permite el control del módulo RTC1302.
-**SD.h (incluida en la IDE de desarollo de Arduino)**: necesaria para la escritura de datos en un archivo .CSV en la SD en FAT32
+-  **Wire.h (incluida en la IDE de desarollo de Arduino)**: permite modificar los pines de comunicación I2C con el LCD de 16x2.
+-  **DHT.h (by Adafruit)**: necesaria para trabajar con el sensor DHT11 (o DHT22 en su defecto). 
+-  **LiquidCrystal_I2C.h (by Frank Brabander)**: permitre el manejo de la pantalla LCD I2C 16x2.
+-  **virtuabotixRTC.h: (by Joseph Datillo)**: permite el control del módulo RTC1302.
+-  **SD.h (incluida en la IDE de desarollo de Arduino)**: necesaria para la escritura de datos en un archivo .CSV en la SD en FAT32
 
 
 🔌Esquema de conexión sugerido
