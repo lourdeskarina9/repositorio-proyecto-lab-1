@@ -1,0 +1,250 @@
+//--------------------------------------------------------- BIBLIOTECAS NECESARIAS ---------------------------------------------------------
+#include <Wire.h> 		
+#include <LiquidCrystal_I2C.h> 
+#include <DHT.h> 		
+#include <virtuabotixRTC.h>
+#include <SD.h>
+
+//------------------------------------------------------------------ PINES ------------------------------------------------------------------
+#define DHTPIN 7
+#define DHTTYPE DHT11   
+#define UVPIN A2        // Pin de salida analógica del ML8511
+#define BUZZER 6        // Pin digital para el buzzer
+#define chipSelect 10
+
+//----------------------------------------------------------------- OBJETOS -----------------------------------------------------------------
+// "Crear el clock", CABLES = CLOCK-DATA-RESET (CLK-DAT-RST)
+virtuabotixRTC myRTC(5, 4, 3);
+DHT dht(DHTPIN, DHTTYPE);	
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+File archivo;
+
+//--------------------------------------------------------------- PROTOTIPOS ---------------------------------------------------------------
+void inicio();
+void fechayHora();
+void erroresDHT(float &h, float &t);
+float temperaturayHumedad(float h, float t);
+float UV();
+void controlBuzzer(float indiceUV);
+void inicioSD();
+void guardarDatos(float t, float h, float indiceUV);
+
+//----------------------------------------------------------------- SETUP -----------------------------------------------------------------
+void setup() {
+
+  Serial.begin(9600);
+  inicio();
+  inicioSD();
+  lcd.clear();
+  // Configurar fecha y hora (solo la 1ra vez)
+ 
+}
+
+//------------------------------------------------------------------ LOOP ------------------------------------------------------------------
+void loop() {
+  myRTC.updateTime();
+  
+  // Variables del DHT
+  float h = dht.readHumidity(); // lee la humedad
+  float t = dht.readTemperature(); //lee la temperatura
+  bool guardadoXminuto = false;
+
+  // Mostrar en el LCD
+  fechayHora();
+  lcd.clear();
+
+  temperaturayHumedad(h, t);
+  lcd.clear();
+
+  float indiceUV = UV();
+  controlBuzzer(indiceUV); // maneja el buzzer según el índice
+
+if (myRTC.seconds == 0 && !guardadoXminuto) {
+    guardarDatos(t, h, indiceUV);
+    guardadoXminuto = true;   // evitar múltiples escrituras en el mismo minuto
+  }
+  if (myRTC.seconds != 0) {
+    guardadoXminuto = false;  // resetear bandera cuando cambia el segundo
+  }
+
+
+  delay(2000); // Actualiza cada segundo
+  lcd.clear();
+}
+
+//--------------------------------------------------------------- FUNCIONES ---------------------------------------------------------------
+void inicio(){
+  lcd.init();       // iniciar pantalla
+  lcd.backlight();  // incender luz de fondo (necesario porque sino no se ve nada)
+  dht.begin();      // iniciar sensor
+  lcd.setCursor(0, 0); // deja el cursor del LCD al comienzo para poder escribir
+  lcd.print("Iniciando"); //mensajito ;)
+  lcd.setCursor(0, 1); // paso a la parte de abajo 
+  lcd.print("centralita..."); //mensajito ;)
+  delay(2000);
+}
+
+void erroresDHT(float &h, float &t){
+  //Chequeo de errores del DHT11
+  if (isnan(h) && isnan(t)) {
+    lcd.setCursor(0, 0);
+    lcd.print("Error sensor");
+    lcd.setCursor(0, 1);
+    lcd.print("Revisar DHT11");
+    Serial.println("Error: no se detecta el sensor DHT11");
+
+    // Queda en un bucle hasta que vuelva a dar valores válidos
+    while (isnan(h) && isnan(t)) {
+      delay(500); // espera 5 milisegundos y vuelve a leer
+      h = dht.readHumidity();
+      t = dht.readTemperature();
+    }
+    lcd.clear(); // limpia cuando se recupera
+  }
+}
+
+
+float temperaturayHumedad(float h, float t){
+  // Mostrar temperatura y humedad durante 4 segundos
+  for (int i = 0; i < 4; i++) {
+    erroresDHT(h,t);
+    h = dht.readHumidity(); // lee la humedad
+    t = dht.readTemperature(); //lee la temperatura
+
+    lcd.setCursor(1, 0);
+    lcd.print("Temp: ");
+    lcd.print(t);
+    lcd.print((char)223); // Símbolo de grados "°" (el LCD no lo muestra bien sino)
+    lcd.print("C   ");    // limpiar restos anteriores
+
+    lcd.setCursor(0, 1);
+    lcd.print("Humedad: ");
+    lcd.print(h);
+    lcd.print("%   ");    // limpiar restos anteriores
+
+    delay(1000); // refresca cada 1 segundo
+  }
+}
+
+void fechayHora(){
+    // Mostrar fecha y hora durante 4 segundos
+  for (int i = 0; i <4 ; i++) {
+    myRTC.updateTime();  // actualizar RTC
+    lcd.setCursor(4, 0);
+    lcd.print(myRTC.dayofmonth);
+    lcd.print("/");
+    lcd.print(myRTC.month);
+    lcd.print("/");
+    lcd.print(myRTC.year);
+
+    lcd.setCursor(4, 1);
+    if (myRTC.hours < 10) lcd.print("0");  
+    lcd.print(myRTC.hours);
+    lcd.print(":");
+    if (myRTC.minutes < 10) lcd.print("0");
+    lcd.print(myRTC.minutes);
+    lcd.print(":");
+    if (myRTC.seconds < 10) lcd.print("0");
+    lcd.print(myRTC.seconds);
+
+    delay(1000); // refresca cada 1 segundo
+  }
+
+}
+
+float UV(){
+  float indiceUV = 0;
+  // Mostrar índice UV durante 3 segundos
+  for (int i = 0; i < 3; i++) {
+    int lecturaUV = analogRead(UVPIN);
+    float voltage = lecturaUV * (5.0 / 1023.0); // Convertir a voltaje
+    indiceUV = mapfloat(voltage, 0.99, 2.9, 0.0, 15.0); 
+    // 0.99V ~ 0 UV   |   2.9V ~ 15 UV (rango típico del ML8511)
+    // Corrección para evitar valores negativos
+    if (indiceUV < 0) {
+      indiceUV = 0;
+    }
+    lcd.setCursor(1, 0);
+    lcd.print("Indice UV: "); 
+    lcd.print(indiceUV, 1); // 1 decimal
+
+    delay(1000); // refresca cada 1 segundo
+  }
+  return indiceUV;
+}
+
+// Función auxiliar para mapear float (igual que map() pero con decimales)
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+
+void controlBuzzer(float indiceUV) {
+  if (indiceUV > 8) {   // condición de peligro
+    lcd.setCursor(4, 1);
+    lcd.print("PELIGRO");
+    for(int j=0; j<2; j++){
+      for (int k = 0; k < 3; k++) {
+        tone(BUZZER, 700); // Arranca el tono
+        delay(300);         // Lo mantiene
+        noTone(BUZZER);     // Lo apaga
+        delay(500);        // Pausa entre beeps
+      }
+    }
+  }
+}
+
+void inicioSD(){
+  Serial.println("Iniciando SD ...");
+
+  while (!SD.begin(chipSelect)) {
+    lcd.clear();
+    lcd.setCursor(4,0);
+    lcd.print("Error SD");
+  }
+  Serial.println("SD inicializada correctamente");
+
+  archivo = SD.open("datos.csv", FILE_WRITE);
+  while (!archivo) {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Error de Archivo");
+  }
+}
+
+void guardarDatos(float t, float h, float indiceUV){
+  archivo = SD.open("datos.csv", FILE_WRITE);
+  while (!SD.begin(chipSelect)) {
+    lcd.clear();
+    lcd.setCursor(4,0);
+    lcd.print("Error SD");
+  }
+  Serial.println("SD inicializada correctamente");
+
+  archivo = SD.open("datos.csv", FILE_WRITE);
+  while (!archivo) {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Error de Archivo");
+  }
+  if (archivo) {
+    // Construir fecha y hora en formato dd/mm/yyyy y hh:mm:ss
+    char fecha[15];
+    char hora[15];
+    sprintf(fecha, "%02d/%02d/%04d", myRTC.dayofmonth, myRTC.month, myRTC.year);
+    sprintf(hora, "%02d:%02d:%02d", myRTC.hours, myRTC.minutes, myRTC.seconds);
+
+    // Escribir fila CSV
+    archivo.print(fecha);
+    archivo.print(",");
+    archivo.print(hora);
+    archivo.print(",");
+    archivo.print(t);
+    archivo.print(",");
+    archivo.print(h);
+    archivo.print(",");
+    archivo.println(indiceUV, 1); // 1 decimal
+
+    archivo.close();
+  }
+}
