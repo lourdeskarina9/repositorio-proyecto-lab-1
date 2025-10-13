@@ -42,3 +42,4 @@ while (!Serial); // Espera a que el monitor serial esté listo
 void loop() {
   // put your main code here, to run repeatedly:
 }
+
