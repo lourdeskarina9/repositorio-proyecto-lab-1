@@ -18,7 +18,7 @@ Su objetivo es obtener datos de temperatura, humedad y radiación ultravioleta (
 
 🖼️ Esquema de conexión sugerido
 
-📎 (Insertar aquí el diagrama generado o subirlo como archivo esquema_conexion.png y referenciarlo con la siguiente línea)
+📎 (Insertar aquí el diagrama generado o subirlo como archivo esquema_conexion.png y referenciarlo con la siguiente línea) -PENDIENTE-
 
 ![Esquema de conexión](esquema_conexion.png)
 
@@ -26,7 +26,7 @@ Su objetivo es obtener datos de temperatura, humedad y radiación ultravioleta (
 
 Antes de compilar y cargar el código, asegurate de instalar las siguientes librerías desde el Administrador de Librerías del Arduino IDE:
 
-Librería	Función
+Librería	Función -REVEER-
 DHT.h	Lectura de temperatura y humedad (sensor DHT11)
 Adafruit_Sensor.h	Dependencia general para sensores Adafruit
 LiquidCrystal_I2C.h	Manejo de la pantalla LCD con interfaz I2C
