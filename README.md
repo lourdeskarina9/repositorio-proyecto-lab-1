@@ -10,6 +10,7 @@ Su objetivo es obtener datos de temperatura, humedad y radiación ultravioleta (
 -  Muestra los valores en una pantalla LCD 16x2 mediante comunicación I2C.
 -  Registra las mediciones en una tarjeta SD, permitiendo su posterior análisis.
 -  Incluye un módulo de reloj en tiempo real (RTC) para fechar cada registro de datos.
+-  Envía los datos de las mediciones en tiempo real a través de un módulo Bluetooth a una aplicación móvil diseñada a medida para el proyecto.
 
 🧰  Materiales Necesarios:
 -  **Placa Arduino Uno con su respectivo cable de alimentación y USB**.
@@ -21,7 +22,8 @@ Su objetivo es obtener datos de temperatura, humedad y radiación ultravioleta (
 -  **Buzzer Pasivo**.
 -  **LDR y resistencia de 1kΩ**.
 -  **Lector de tarjetas SD del tipo SPI**.
--  **Tarjeta microSD** (con adapatador, según corresponda) de una capacidad máxima de **32GB** en formato **FAT32 o FAT16**
+-  **Tarjeta microSD** (con adapatador, según corresponda) de una capacidad máxima de **32GB** en formato **FAT32 o FAT16**.
+-  **Módulo Bluetooth HC-05**.
 
 
 **‼️Antes de compilar y cargar el código "FINAL", asegurate de instalar las siguientes librerías desde el Administrador de Librerías del Arduino IDE:**
@@ -30,6 +32,7 @@ Su objetivo es obtener datos de temperatura, humedad y radiación ultravioleta (
 -  **LiquidCrystal_I2C.h (by Frank Brabander)**: permitre el manejo de la pantalla LCD I2C 16x2.
 -  **virtuabotixRTC.h: (by Joseph Datillo)**: permite el control del módulo RTC1302.
 -  **SD.h (incluida en la IDE de desarollo de Arduino)**: necesaria para la escritura de datos en un archivo .CSV en la SD en FAT32
+-  **SoftwareSerial.h (incluida en la IDE de desarollo de Arduino)**: permite asignar puertos de TXD y RXD personalizados para el módulo Bluetooth HC-05.
 
 
 🔌Esquema de conexión sugerido
