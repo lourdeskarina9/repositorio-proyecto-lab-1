@@ -1,0 +1,312 @@
+//--------------------------------------------------------- BIBLIOTECAS NECESARIAS ---------------------------------------------------------
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+#include <virtuabotixRTC.h>
+#include <SD.h>
+#include <SoftwareSerial.h>
+
+// SoftwareSerial: RX pin 7 (HC-05 TX), TX pin 9 (HC-05 RX)
+SoftwareSerial btSerial(7, 9);
+
+//------------------------------------------------------------------ PINES ------------------------------------------------------------------
+#define DHTPIN 8
+#define DHTTYPE DHT11
+#define UVPIN A2
+#define LDRPIN A1
+#define BUZZER 6
+#define chipSelect 10
+
+//------------------------------------------------------- VARIABLES GLOBALES ---------------------------------------------------------
+const unsigned long intervalo = 1000;
+const unsigned long duracion = 4000;
+const int iteraciones = duracion / intervalo;
+
+virtuabotixRTC myRTC(5, 4, 3);
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+File archivo;
+
+int ultimoMinutoGuardado = -1;
+
+// Buffer de recepción Bluetooth (sin usar String)
+char btRxBuf[64];
+uint8_t btRxIdx = 0;
+
+//--------------------------------------------------------------- PROTOTIPOS ---------------------------------------------------------------
+void inicio();
+void mostrarFechaHora();
+void mostrarTemperaturaHumedad(float t, float h);
+float leerUV();
+void mostrarUV(float indiceUV);
+void mostrarRiesgo(float indiceUV);
+void controlBuzzer(float indiceUV);
+float leerLuz();
+void mostrarLuz(float porcentaje);
+void inicioSD();
+void guardarDatos(float t, float h, float indiceUV, float porcentajeLuz);
+void enviarParaAppInventor(float t, float h, float indiceUV, float porcentajeLuz);
+
+//----------------------------------------------------------------- SETUP -----------------------------------------------------------------
+void setup() {
+  Serial.begin(9600);
+  btSerial.begin(9600); // Asegurate que tu HC-05 esté a 9600
+  pinMode(chipSelect, OUTPUT);
+  digitalWrite(chipSelect, HIGH);
+  Wire.begin(); // I2C init
+  pinMode(BUZZER, OUTPUT);
+  dht.begin();
+  lcd.init();
+  lcd.backlight();
+
+  // inicializar buffer recepción
+  btRxBuf[0] = '\0';
+  btRxIdx = 0;
+
+  inicio();
+  inicioSD();
+
+  lcd.clear();
+
+}
+
+//------------------------------------------------------------------ LOOP ------------------------------------------------------------------
+void loop() {
+  myRTC.updateTime();
+
+  // Leer sensores
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  float indiceUV = leerUV();
+  float porcentajeLuz = leerLuz();
+
+  mostrarFechaHora();
+
+  for (int i=0;i<iteraciones;i++){
+    h = dht.readHumidity();
+    t = dht.readTemperature();
+
+    if (isnan(h) || isnan(t)) {
+      lcd.clear();
+      lcd.setCursor(2, 0);
+      lcd.print(F("Error DHT11"));
+      delay(4000);
+      break;
+    }
+
+    mostrarTemperaturaHumedad(t,h);
+
+    enviarParaAppInventor(t,h,indiceUV,porcentajeLuz);
+  }
+
+  // --- UV ---
+  for (int i=0;i<iteraciones;i++){
+    indiceUV = leerUV();
+    mostrarUV(indiceUV);
+    enviarParaAppInventor(t,h,indiceUV,porcentajeLuz);
+  }
+
+  // --- Luz ---
+  for (int i=0;i<iteraciones;i++){
+    porcentajeLuz = leerLuz();
+    mostrarLuz(porcentajeLuz);
+    enviarParaAppInventor(t,h,indiceUV,porcentajeLuz);
+  }
+
+  lcd.clear();
+
+  do{
+    lcd.clear();
+    lcd.setCursor(4, 0);
+    lcd.print(F("Error SD"));
+    Serial.println("Error SD");
+  } while(!SD.begin(chipSelect)); //si no está, se bloquea el programa hasta que se inserte la SD
+
+  //Guardar datos cada 1 minuto
+  if (myRTC.minutes != ultimoMinutoGuardado) {
+    guardarDatos(t, h, indiceUV, porcentajeLuz);
+    ultimoMinutoGuardado = myRTC.minutes;
+  }
+}
+
+
+//--------------------------------------------------------------- FUNCIONES ---------------------------------------------------------------
+void inicio() {
+  Serial.println(F("Inicializando..."));
+  lcd.setCursor(3, 0); lcd.print("Iniciando");
+  lcd.setCursor(2, 1); lcd.print("centralita...");
+  delay(2000);
+  lcd.clear();
+}
+
+void mostrarFechaHora() {
+  for (int i = 0; i < 4; i++) {
+    myRTC.updateTime();
+    lcd.setCursor(3, 0);
+    if (myRTC.dayofmonth < 10) lcd.print('0');
+    lcd.print(myRTC.dayofmonth); lcd.print('/');
+    if (myRTC.month < 10) lcd.print('0');
+    lcd.print(myRTC.month); lcd.print('/');
+    lcd.print(myRTC.year);
+
+    lcd.setCursor(4, 1);
+    if (myRTC.hours < 10) lcd.print("0");
+    lcd.print(myRTC.hours); lcd.print(":");
+    if (myRTC.minutes < 10) lcd.print("0");
+    lcd.print(myRTC.minutes); lcd.print(":");
+    if (myRTC.seconds < 10) lcd.print("0");
+    lcd.print(myRTC.seconds);
+
+    delay(1000);
+  }
+}
+
+void mostrarTemperaturaHumedad(float t, float h) {
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("  Temp: "));
+  lcd.print(t, 1);
+  lcd.print((char)223);
+  lcd.print("C  ");
+
+  lcd.setCursor(0, 1);
+  lcd.print(F("  Humedad: "));
+  lcd.print(h, 0);
+  lcd.print("%   ");
+
+  delay(intervalo);
+}
+
+float leerUV() {
+  int lecturaUV = analogRead(UVPIN);
+  float voltage = lecturaUV * (5.0 / 1023.0);
+  float indiceUV = (voltage - 0.99) * (15.0 / (2.9 - 0.99));
+  if (indiceUV < 0) indiceUV = 0.0;
+  return indiceUV;
+}
+
+void mostrarUV(float indiceUV) {
+  lcd.setCursor(1, 0);
+  lcd.print(F("Indice UV: "));
+  lcd.print(indiceUV, 1);
+  lcd.print("  ");
+  mostrarRiesgo(indiceUV);
+  controlBuzzer(indiceUV);
+  delay(intervalo);
+}
+
+void mostrarRiesgo(float indiceUV){
+  lcd.setCursor(0, 1);
+  if (indiceUV < 3) lcd.print(F("  Riesgo: Bajo     "));
+  else if (indiceUV < 6) lcd.print(F("Riesgo: Moderado "));
+  else if (indiceUV < 8) lcd.print(F("  Riesgo: Alto     "));
+  else if (indiceUV < 11) lcd.print(F("Riesgo: Muy Alto "));
+  else lcd.print(F("Riesgo: Extremo  "));
+}
+
+float leerLuz() {
+  int lectura = analogRead(LDRPIN);
+  float porcentaje = lectura / 1023.0 * 100.0;
+  return porcentaje;
+}
+
+void mostrarLuz(float porcentaje) {
+  lcd.setCursor(0, 0);
+  lcd.print(F("    Luz: "));
+  lcd.print(porcentaje, 0);
+  lcd.print("%   ");
+
+  lcd.setCursor(0, 1);
+  if (porcentaje < 30) {
+    lcd.print(F("    Poca luz     ")); 
+  } else if (porcentaje < 70) {
+    lcd.print(F("     Normal       "));
+  } else {
+    lcd.setCursor(0, 1);
+    lcd.print(F("   Mucha luz    "));
+  }
+
+  delay(intervalo);
+}
+
+void controlBuzzer(float indiceUV) {
+  if (indiceUV > 8) {
+    tone(BUZZER, 220);
+    delay(500);
+    noTone(BUZZER);
+  }
+}
+
+void inicioSD() {
+  Serial.println("Iniciando SD...");
+  while (!SD.begin(chipSelect)) { //si no está al inicializar la central, se bloquea hasta que se inserte una SD
+    lcd.clear();
+    lcd.setCursor(4, 0);
+    lcd.print(F("Error SD"));
+    Serial.println("Error SD");
+  }
+
+  if (!SD.exists("datos.csv")) {
+    archivo = SD.open("datos.csv", FILE_WRITE);
+    if (archivo) {
+      archivo.println("Fecha,Hora,Temperatura,Humedad,Indice UV,Luz");
+      archivo.close();
+      Serial.println("Archivo creado");
+    }
+  }
+  Serial.println("SD lista");
+}
+
+void guardarDatos(float t, float h, float indiceUV, float porcentajeLuz) {
+
+  archivo = SD.open("datos.csv", FILE_WRITE);
+  if (archivo) {
+    char fecha[15];
+    char hora[15];
+    sprintf(fecha, "%02d/%02d/%04d", myRTC.dayofmonth, myRTC.month, myRTC.year);
+    sprintf(hora, "%02d:%02d:%02d", myRTC.hours, myRTC.minutes, myRTC.seconds);
+
+    archivo.print(fecha);
+    archivo.print(",");
+    archivo.print(hora);
+    archivo.print(",");
+    if (!isnan(t)) archivo.print(t); else archivo.print("ERR");
+    archivo.print(",");
+    if (!isnan(h)) archivo.print(h); else archivo.print("ERR");
+    archivo.print(",");
+    archivo.print(indiceUV, 1);
+    archivo.print(",");
+    archivo.println(porcentajeLuz, 1);
+
+    archivo.close();
+    Serial.print("Guardado: ");
+    Serial.println(hora);
+  } else {
+    Serial.println("Error al abrir datos.csv");
+  }
+}
+
+//Bluetooth
+void enviarParaAppInventor(float t, float h, float indiceUV, float porcentajeLuz) {
+  char tBuf[12], hBuf[12], uvBuf[12], lBuf[12];
+
+  if (isnan(t)) strcpy(tBuf, "0");
+  else dtostrf(t, 4, 1, tBuf);  
+
+  if (isnan(h)) strcpy(hBuf, "0");
+  else dtostrf(h, 4, 1, hBuf);
+
+  dtostrf(indiceUV, 4, 1, uvBuf);
+
+  int luzInt = (int)(porcentajeLuz + 0.5);
+  snprintf(lBuf, sizeof(lBuf), "%d", luzInt);
+
+  // Línea solo con valores separados por ;
+  char out[80];
+  snprintf(out, sizeof(out), "%s;%s;%s;%s\n", tBuf, hBuf, uvBuf, lBuf);
+
+  btSerial.print(out);
+  btSerial.flush();
+  delay(30);
+  Serial.print(F("BT-> ")); Serial.print(out);
+}
